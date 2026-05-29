@@ -1,0 +1,1624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#f5f1ea">
+<title>Ledger</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,600;9..144,700&family=JetBrains+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f5f1ea;
+  --bg-2: #ebe5d9;
+  --ink: #1a1814;
+  --ink-2: #5b554a;
+  --muted: #8a8270;
+  --line: #d9d2c2;
+  --card: #fbf8f2;
+
+  /* Type-specific accents */
+  --accent-expense: #b8462f;
+  --accent-income: #4a6741;
+  --accent-investment: #3d6480;
+
+  /* Active accent (set per current type) */
+  --accent: var(--accent-expense);
+
+  --shadow: 0 1px 0 rgba(26, 24, 20, 0.04), 0 8px 24px rgba(26, 24, 20, 0.04);
+  --radius: 14px;
+  --radius-sm: 10px;
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: 'Inter', -apple-system, sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior-y: none;
+}
+
+input, button, select, textarea {
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+}
+
+.hidden { display: none !important; }
+
+/* ===== Lock screen ===== */
+.lock-screen {
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  z-index: 100;
+}
+
+.lock-card {
+  width: 100%;
+  max-width: 360px;
+  text-align: center;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.brand-mark {
+  font-size: 32px;
+  color: var(--accent-expense);
+  line-height: 1;
+}
+
+.brand-mark.small { font-size: 18px; }
+
+.brand-name {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 30px;
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+
+.brand-name.small {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.lock-tag {
+  color: var(--ink-2);
+  font-style: italic;
+  font-family: 'Fraunces', serif;
+  margin: 8px 0 32px;
+}
+
+.lock-field {
+  text-align: left;
+  margin-bottom: 14px;
+}
+
+.lock-label {
+  display: block;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 500;
+  margin-bottom: 6px;
+  padding-left: 2px;
+}
+
+#urlInput, #tokenInput {
+  width: 100%;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.15s;
+  color: var(--ink);
+}
+
+#tokenInput {
+  text-align: center;
+  letter-spacing: 0.2em;
+}
+
+#urlInput:focus, #tokenInput:focus { border-color: var(--accent); }
+
+.lock-hint {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 14px;
+  margin-bottom: 0;
+}
+
+.lock-hint a {
+  color: var(--accent);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+#urlPreview {
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--ink-2);
+}
+
+.lock-error {
+  color: var(--accent-expense);
+  font-size: 13px;
+  min-height: 18px;
+  margin: 12px 0 0;
+}
+
+/* ===== Buttons ===== */
+.btn-primary {
+  width: 100%;
+  background: var(--ink);
+  color: var(--bg);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 14px 20px;
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+  transition: transform 0.05s, opacity 0.15s, background 0.2s;
+}
+
+.btn-primary:active { transform: scale(0.98); }
+.btn-primary:disabled { opacity: 0.35; cursor: not-allowed; }
+.btn-primary.big { padding: 16px 20px; font-size: 16px; }
+
+/* ===== App layout ===== */
+.app {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 0 16px 80px;
+  min-height: 100vh;
+}
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 0 12px;
+  position: sticky;
+  top: 0;
+  background: var(--bg);
+  z-index: 10;
+}
+
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.topbar-right {
+  display: flex;
+  gap: 4px;
+  background: var(--bg-2);
+  padding: 3px;
+  border-radius: 999px;
+}
+
+.tab-btn {
+  background: transparent;
+  border: none;
+  padding: 7px 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-2);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.tab-btn.active {
+  background: var(--card);
+  color: var(--ink);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+
+/* ===== Views ===== */
+.view { display: none; }
+.view.active { display: block; }
+
+/* ===== Hero stats ===== */
+.hero-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+  padding: 18px 0 4px;
+}
+
+.stat-row {
+  text-align: center;
+  padding: 6px 4px;
+  position: relative;
+}
+
+.stat-row[data-stat-type="expense"] .stat-label::before { background: var(--accent-expense); }
+.stat-row[data-stat-type="income"] .stat-label::before { background: var(--accent-income); }
+.stat-row[data-stat-type="investment"] .stat-label::before { background: var(--accent-investment); }
+
+.stat-label {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.stat-label::before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.stat-amount {
+  font-family: 'Fraunces', serif;
+  font-weight: 400;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+.stat-amount .cur {
+  font-size: 13px;
+  color: var(--muted);
+  margin-right: 1px;
+}
+
+.hero-sub {
+  text-align: center;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 8px 0 18px;
+}
+
+/* ===== Card ===== */
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 18px;
+  margin-bottom: 16px;
+  box-shadow: var(--shadow);
+}
+
+.card-title {
+  font-family: 'Fraunces', serif;
+  font-size: 17px;
+  font-weight: 600;
+  margin: 0 0 14px;
+  letter-spacing: -0.01em;
+}
+
+/* ===== Quick add — type-aware accent ===== */
+.quick-add[data-type="expense"] { --accent: var(--accent-expense); }
+.quick-add[data-type="income"] { --accent: var(--accent-income); }
+.quick-add[data-type="investment"] { --accent: var(--accent-investment); }
+
+/* ===== Type segmented control ===== */
+.type-toggle, .insights-type-toggle {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 3px;
+  margin-bottom: 16px;
+  gap: 3px;
+}
+
+.insights-type-toggle {
+  background: var(--card);
+  margin-bottom: 4px;
+}
+
+.type-seg {
+  background: transparent;
+  border: none;
+  padding: 8px 6px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-2);
+  cursor: pointer;
+  transition: all 0.18s;
+}
+
+.type-seg.active {
+  background: var(--ink);
+  color: var(--bg);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+}
+
+.quick-add[data-type="expense"] .type-seg.active { background: var(--accent-expense); }
+.quick-add[data-type="income"] .type-seg.active { background: var(--accent-income); }
+.quick-add[data-type="investment"] .type-seg.active { background: var(--accent-investment); }
+
+.insights-type-toggle .type-seg.active[data-itype="expense"] { background: var(--accent-expense); color: white; }
+.insights-type-toggle .type-seg.active[data-itype="income"] { background: var(--accent-income); color: white; }
+.insights-type-toggle .type-seg.active[data-itype="investment"] { background: var(--accent-investment); color: white; }
+
+/* ===== Amount input ===== */
+.amount-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  padding: 4px 0 14px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 16px;
+}
+
+.currency-big {
+  font-family: 'Fraunces', serif;
+  font-size: 28px;
+  color: var(--muted);
+  margin-right: 6px;
+}
+
+#amountInput {
+  background: transparent;
+  border: none;
+  outline: none;
+  font-family: 'Fraunces', serif;
+  font-size: 44px;
+  font-weight: 400;
+  text-align: center;
+  width: 60%;
+  letter-spacing: -0.02em;
+  padding: 0;
+  color: var(--ink);
+}
+
+#amountInput::placeholder { color: #d9d2c2; }
+
+#amountInput::-webkit-outer-spin-button,
+#amountInput::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+#amountInput { -moz-appearance: textfield; }
+
+/* ===== Form grid ===== */
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 8px;
+  margin-bottom: 16px;
+}
+
+.field { display: flex; flex-direction: column; gap: 4px; }
+.field.full { grid-column: 1 / -1; }
+
+.field-label {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 500;
+  padding-left: 2px;
+}
+
+.select, .input {
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  outline: none;
+  font-size: 14px;
+  transition: border-color 0.15s;
+  color: var(--ink);
+  width: 100%;
+}
+
+.select {
+  -webkit-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path fill='%238a8270' d='M5 6L0 0h10z'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 28px;
+}
+
+.select:focus, .input:focus { border-color: var(--accent); }
+
+.select option, .select optgroup {
+  background: var(--card);
+  color: var(--ink);
+}
+
+.select optgroup {
+  font-style: normal;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+/* Submit button gets type accent */
+.quick-add[data-type="expense"] .btn-primary { background: var(--accent-expense); }
+.quick-add[data-type="income"] .btn-primary { background: var(--accent-income); }
+.quick-add[data-type="investment"] .btn-primary { background: var(--accent-investment); }
+
+/* ===== Recent list ===== */
+.section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  padding: 0 4px;
+}
+
+.section-head h2 {
+  font-family: 'Fraunces', serif;
+  font-size: 17px;
+  font-weight: 600;
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.muted { color: var(--muted); font-size: 12px; }
+
+.recent-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  background: var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.entry {
+  background: var(--card);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  position: relative;
+  border-left: 3px solid transparent;
+}
+
+.entry[data-type="expense"] { border-left-color: var(--accent-expense); }
+.entry[data-type="income"] { border-left-color: var(--accent-income); }
+.entry[data-type="investment"] { border-left-color: var(--accent-investment); }
+
+.entry-emoji {
+  font-size: 20px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-2);
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+.entry-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.entry-title {
+  font-weight: 500;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.entry-meta {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.entry-amount {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 500;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.entry[data-type="income"] .entry-amount { color: var(--accent-income); }
+
+.entry-delete {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: var(--accent-expense);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s;
+  cursor: pointer;
+}
+
+.entry.show-delete .entry-delete {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.empty {
+  background: var(--card);
+  padding: 32px 16px;
+  text-align: center;
+  color: var(--muted);
+  font-style: italic;
+  font-family: 'Fraunces', serif;
+  border-radius: var(--radius);
+}
+
+/* ===== Insights ===== */
+.month-picker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin: 12px 0 8px;
+}
+
+.month-nav {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  font-size: 18px;
+  color: var(--ink-2);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.month-nav:active { background: var(--bg-2); }
+
+.month-label {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 17px;
+  min-width: 140px;
+  text-align: center;
+  letter-spacing: -0.01em;
+}
+
+.insight-summary {
+  text-align: center;
+  padding: 24px 18px;
+}
+
+.insight-amount {
+  font-family: 'Fraunces', serif;
+  font-size: 44px;
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+
+.insight-amount .currency {
+  font-size: 22px;
+  vertical-align: top;
+  margin-top: 6px;
+  display: inline-block;
+  color: var(--ink-2);
+  margin-right: 3px;
+}
+
+.insight-sub {
+  margin-top: 10px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.bd-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.bd-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  max-width: 120px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bd-label .emoji { font-size: 16px; }
+
+.bd-bar {
+  height: 6px;
+  background: var(--bg-2);
+  border-radius: 3px;
+  position: relative;
+  overflow: hidden;
+}
+
+.bd-fill {
+  position: absolute;
+  inset: 0;
+  background: var(--accent);
+  border-radius: 3px;
+  transform-origin: left;
+  transition: transform 0.4s cubic-bezier(0.2, 0, 0, 1);
+}
+
+.bd-amount {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  font-weight: 500;
+  text-align: right;
+  min-width: 70px;
+}
+
+/* Insight accent driven by selected type */
+.view[data-itype="expense"] { --accent: var(--accent-expense); }
+.view[data-itype="income"] { --accent: var(--accent-income); }
+.view[data-itype="investment"] { --accent: var(--accent-investment); }
+
+/* trend chart */
+.trend-chart {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 8px;
+  height: 140px;
+  align-items: end;
+  padding: 8px 0;
+}
+
+.trend-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  height: 100%;
+  justify-content: flex-end;
+}
+
+.trend-bar {
+  width: 100%;
+  background: var(--accent);
+  opacity: 0.5;
+  border-radius: 4px 4px 0 0;
+  min-height: 3px;
+  transition: height 0.4s cubic-bezier(0.2, 0, 0, 1);
+}
+
+.trend-bar.current { opacity: 1; background: var(--ink); }
+
+.trend-label {
+  font-size: 10px;
+  color: var(--muted);
+  font-family: 'JetBrains Mono', monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.trend-value {
+  font-size: 10px;
+  color: var(--ink-2);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* toast */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: var(--ink);
+  color: var(--bg);
+  padding: 10px 18px;
+  border-radius: 999px;
+  font-size: 13px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s, transform 0.2s;
+  z-index: 50;
+}
+
+.toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+@media (max-width: 360px) {
+  .stat-amount { font-size: 20px; }
+  #amountInput { font-size: 38px; }
+}
+
+</style>
+</head>
+<body>
+
+<!-- Lock screen -->
+<div id="lockScreen" class="lock-screen">
+  <div class="lock-card">
+    <div class="brand">
+      <span class="brand-mark">◐</span>
+      <h1 class="brand-name">Ledger</h1>
+    </div>
+    <p class="lock-tag">A quiet place for daily money.</p>
+
+    <div id="urlField" class="lock-field">
+      <label class="lock-label">Apps Script URL</label>
+      <input type="text" id="urlInput" placeholder="https://script.google.com/macros/.../exec" autocomplete="off" spellcheck="false">
+    </div>
+
+    <div class="lock-field">
+      <label class="lock-label">Access token</label>
+      <input type="password" id="tokenInput" placeholder="" autocomplete="off">
+    </div>
+
+    <button id="unlockBtn" class="btn-primary">Open</button>
+    <p class="lock-error" id="lockError"></p>
+
+    <p id="urlHint" class="lock-hint hidden">
+      Connected to <span id="urlPreview"></span>. <a href="#" id="changeUrl">change</a>
+    </p>
+  </div>
+</div>
+
+<!-- Main app -->
+<div id="app" class="app hidden">
+
+  <header class="topbar">
+    <div class="topbar-left">
+      <span class="brand-mark small">◐</span>
+      <span class="brand-name small">Ledger</span>
+    </div>
+    <div class="topbar-right">
+      <button class="tab-btn active" data-view="today">Today</button>
+      <button class="tab-btn" data-view="insights">Insights</button>
+    </div>
+  </header>
+
+  <!-- TODAY VIEW -->
+  <section id="view-today" class="view active">
+
+    <div class="hero-stats">
+      <div class="stat-row" data-stat-type="expense">
+        <div class="stat-label">Spent</div>
+        <div class="stat-amount"><span class="cur">₹</span><span id="heroSpent">0</span></div>
+      </div>
+      <div class="stat-row" data-stat-type="income">
+        <div class="stat-label">Earned</div>
+        <div class="stat-amount"><span class="cur">₹</span><span id="heroEarned">0</span></div>
+      </div>
+      <div class="stat-row" data-stat-type="investment">
+        <div class="stat-label">Invested</div>
+        <div class="stat-amount"><span class="cur">₹</span><span id="heroInvested">0</span></div>
+      </div>
+    </div>
+    <div class="hero-sub" id="heroSub">This month</div>
+
+    <div class="quick-add card" data-type="expense">
+
+      <!-- Type segmented control -->
+      <div class="type-toggle">
+        <button class="type-seg active" data-type="expense">Expense</button>
+        <button class="type-seg" data-type="income">Income</button>
+        <button class="type-seg" data-type="investment">Investment</button>
+      </div>
+
+      <div class="amount-row">
+        <span class="currency-big" id="currencyMarkBig">₹</span>
+        <input type="number" id="amountInput" inputmode="decimal" placeholder="0" autocomplete="off">
+      </div>
+
+      <div class="form-grid">
+        <div class="field">
+          <label class="field-label">Category</label>
+          <select id="categorySelect" class="select"></select>
+        </div>
+        <div class="field">
+          <label class="field-label">Subcategory</label>
+          <select id="subcategorySelect" class="select"></select>
+        </div>
+        <div class="field full">
+          <label class="field-label">Paid via</label>
+          <select id="paymentSelect" class="select"></select>
+        </div>
+        <div class="field full">
+          <label class="field-label">Note (optional)</label>
+          <input type="text" id="noteInput" class="input" placeholder="" maxlength="80">
+        </div>
+        <div class="field">
+          <label class="field-label">Person</label>
+          <select id="personSelect" class="select"></select>
+        </div>
+        <div class="field">
+          <label class="field-label">Date</label>
+          <input type="date" id="dateInput" class="input">
+        </div>
+      </div>
+
+      <button id="addBtn" class="btn-primary big" disabled>Add expense</button>
+    </div>
+
+    <div class="recent">
+      <div class="section-head">
+        <h2>Recent</h2>
+        <span class="muted" id="recentMeta"></span>
+      </div>
+      <div id="recentList" class="recent-list"></div>
+    </div>
+
+  </section>
+
+  <!-- INSIGHTS VIEW -->
+  <section id="view-insights" class="view">
+
+    <div class="insights-type-toggle">
+      <button class="type-seg active" data-itype="expense">Expense</button>
+      <button class="type-seg" data-itype="income">Income</button>
+      <button class="type-seg" data-itype="investment">Investment</button>
+    </div>
+
+    <div class="month-picker">
+      <button id="prevMonth" class="month-nav">‹</button>
+      <span id="currentMonthLabel" class="month-label"></span>
+      <button id="nextMonth" class="month-nav">›</button>
+    </div>
+
+    <div class="insight-summary card">
+      <div class="insight-amount">
+        <span class="currency">₹</span><span id="insightTotal">0</span>
+      </div>
+      <div class="insight-sub" id="insightSub"></div>
+    </div>
+
+    <div class="card">
+      <h3 class="card-title">By category</h3>
+      <div id="categoryBreakdown" class="breakdown"></div>
+    </div>
+
+    <div class="card">
+      <h3 class="card-title">Last 6 months</h3>
+      <div id="trendChart" class="trend-chart"></div>
+    </div>
+
+    <div class="card">
+      <h3 class="card-title">By payment method</h3>
+      <div id="paymentBreakdown" class="breakdown"></div>
+    </div>
+
+    <div class="card">
+      <h3 class="card-title">By person</h3>
+      <div id="personBreakdown" class="breakdown"></div>
+    </div>
+
+  </section>
+
+</div>
+
+<!-- Toast -->
+<div id="toast" class="toast"></div>
+
+<script>
+// ===== Editable config =====
+window.LEDGER_CONFIG = {
+  CURRENCY: '₹',
+  PEOPLE: ['JF', 'AJ']
+};
+
+/* Ledger v2 — Frontend */
+
+const CFG = window.LEDGER_CONFIG || {};
+const URL_KEY = 'ledger_api_url_v2';
+const TOKEN_KEY = 'ledger_token_v2';
+const VIEW_KEY = 'ledger_view_v2';
+const TYPE_KEY = 'ledger_active_type_v2';
+
+const state = {
+  apiUrl: null,
+  token: null,
+  transactions: [],
+  categories: [],         // [{type, name, emoji}]
+  subcategories: [],      // [{type, category, name}]
+  paymentMethods: [],     // [{name, type}]
+  activeType: 'expense',  // for the form
+  insightType: 'expense', // for insights view
+  monthOffset: 0,
+  loading: false
+};
+
+const TYPE_LABELS = { expense: 'expense', income: 'income', investment: 'investment' };
+const TYPE_VERB = { expense: 'Spent', income: 'Earned', invested: 'Invested' };
+
+// ===== Helpers =====
+const $ = (id) => document.getElementById(id);
+
+function fmt(n) {
+  const x = Math.round(Number(n) || 0);
+  return x.toLocaleString('en-IN');
+}
+
+function cur(n) { return `${CFG.CURRENCY || '₹'}${fmt(n)}`; }
+
+function todayISO() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function monthKey(dateStr) { return (dateStr || '').slice(0, 7); }
+
+function monthKeyOffset(offset) {
+  const d = new Date();
+  d.setDate(1);
+  d.setMonth(d.getMonth() + offset);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function monthLabel(key) {
+  const [y, m] = key.split('-').map(Number);
+  const d = new Date(y, m - 1, 1);
+  return d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+}
+
+function categoryEmoji(type, name) {
+  const c = state.categories.find(c => c.type === type && c.name === name);
+  return c ? c.emoji : '📦';
+}
+
+function showToast(msg) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 1800);
+}
+
+function escapeHtml(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
+}
+
+// ===== API =====
+async function apiGet(action) {
+  if (!state.apiUrl) throw new Error('No API URL set');
+  const url = `${state.apiUrl}?action=${action}&token=${encodeURIComponent(state.token)}`;
+  const res = await fetch(url);
+  return res.json();
+}
+
+async function apiPost(payload) {
+  if (!state.apiUrl) throw new Error('No API URL set');
+  const res = await fetch(state.apiUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ ...payload, token: state.token })
+  });
+  return res.json();
+}
+
+// ===== Lock screen =====
+function tryUnlock() {
+  // Resolve URL: prefer saved, otherwise from input
+  let apiUrl = state.apiUrl || (localStorage.getItem(URL_KEY) || '').trim();
+  if (!apiUrl) {
+    apiUrl = ($('urlInput').value || '').trim();
+  }
+  const token = ($('tokenInput').value || '').trim();
+
+  if (!apiUrl) {
+    $('lockError').textContent = 'Enter the Apps Script URL';
+    return;
+  }
+  if (!apiUrl.startsWith('https://script.google.com/')) {
+    $('lockError').textContent = 'URL must be an Apps Script /exec URL';
+    return;
+  }
+  if (!token) {
+    $('lockError').textContent = 'Enter the access token';
+    return;
+  }
+
+  state.apiUrl = apiUrl;
+  state.token = token;
+  $('lockError').textContent = 'Connecting…';
+
+  apiGet('all')
+    .then(resp => {
+      if (!resp.ok) {
+        $('lockError').textContent = resp.error === 'unauthorized'
+          ? 'Wrong token'
+          : (resp.error || 'Could not connect');
+        state.token = null;
+        return;
+      }
+      // Persist both
+      localStorage.setItem(URL_KEY, apiUrl);
+      localStorage.setItem(TOKEN_KEY, token);
+      state.transactions = resp.transactions || [];
+      state.categories = resp.categories || [];
+      state.subcategories = resp.subcategories || [];
+      state.paymentMethods = resp.paymentMethods || [];
+      hydrate();
+    })
+    .catch(err => {
+      $('lockError').textContent = err.message || 'Connection failed';
+      state.token = null;
+    });
+}
+
+function changeApiUrl(e) {
+  if (e) e.preventDefault();
+  localStorage.removeItem(URL_KEY);
+  localStorage.removeItem(TOKEN_KEY);
+  state.apiUrl = null;
+  state.token = null;
+  $('urlField').classList.remove('hidden');
+  $('urlHint').classList.add('hidden');
+  $('urlInput').value = '';
+  $('tokenInput').value = '';
+  $('lockError').textContent = '';
+}
+
+function applyDeepLinkSetup() {
+  // Format: #setup=BASE64({api:'...', token:'...'})
+  if (!location.hash.startsWith('#setup=')) return false;
+  try {
+    const enc = location.hash.substring('#setup='.length);
+    const json = JSON.parse(atob(decodeURIComponent(enc)));
+    if (json.api) localStorage.setItem(URL_KEY, json.api);
+    if (json.token) localStorage.setItem(TOKEN_KEY, json.token);
+    // Strip hash so the credentials aren't visible / shareable from this point
+    history.replaceState(null, '', location.pathname + location.search);
+    return true;
+  } catch (e) {
+    console.warn('Bad #setup link', e);
+    return false;
+  }
+}
+
+function initLockScreen() {
+  applyDeepLinkSetup();
+
+  const savedUrl = localStorage.getItem(URL_KEY);
+  const savedToken = localStorage.getItem(TOKEN_KEY);
+
+  if (savedUrl) {
+    state.apiUrl = savedUrl;
+    $('urlField').classList.add('hidden');
+    $('urlHint').classList.remove('hidden');
+    // Show last 14 chars so user can identify it without exposing the secret part
+    $('urlPreview').textContent = '…' + savedUrl.slice(-14);
+  }
+
+  if (savedUrl && savedToken) {
+    $('tokenInput').value = savedToken;
+    tryUnlock();
+  }
+}
+
+function hydrate() {
+  $('lockScreen').classList.add('hidden');
+  $('app').classList.remove('hidden');
+
+  // Restore active type from storage
+  const savedType = localStorage.getItem(TYPE_KEY);
+  if (savedType && ['expense', 'income', 'investment'].includes(savedType)) {
+    state.activeType = savedType;
+  }
+
+  renderPeople();
+  $('dateInput').value = todayISO();
+  $('paymentSelect').innerHTML = buildPaymentOptions();
+
+  setActiveType(state.activeType);
+  setInsightType(state.insightType);
+
+  const savedView = localStorage.getItem(VIEW_KEY) || 'today';
+  switchView(savedView);
+
+  renderAll();
+}
+
+// ===== Rendering =====
+function renderPeople() {
+  const sel = $('personSelect');
+  sel.innerHTML = '';
+  (CFG.PEOPLE || ['Me']).forEach(p => {
+    const opt = document.createElement('option');
+    opt.value = p;
+    opt.textContent = p;
+    sel.appendChild(opt);
+  });
+}
+
+function buildCategoryOptions(type) {
+  const cats = state.categories.filter(c => c.type === type);
+  let html = '<option value="">— select —</option>';
+  cats.forEach(c => {
+    html += `<option value="${escapeHtml(c.name)}">${c.emoji} ${escapeHtml(c.name)}</option>`;
+  });
+  return html;
+}
+
+function buildSubcategoryOptions(type, category) {
+  if (!category) return '<option value="">—</option>';
+  const subs = state.subcategories.filter(s => s.type === type && s.category === category);
+  if (subs.length === 0) return '<option value="">—</option>';
+  let html = '<option value="">— select —</option>';
+  subs.forEach(s => {
+    html += `<option value="${escapeHtml(s.name)}">${escapeHtml(s.name)}</option>`;
+  });
+  return html;
+}
+
+function buildPaymentOptions() {
+  // Group by payment type using optgroups
+  const byType = {};
+  state.paymentMethods.forEach(m => {
+    if (!byType[m.type]) byType[m.type] = [];
+    byType[m.type].push(m.name);
+  });
+  const order = ['Bank Account', 'UPI', 'Credit Card', 'Debit Card', 'Net Banking', 'Wallet', 'Cash', 'Other'];
+  const types = Object.keys(byType).sort((a, b) => {
+    const ia = order.indexOf(a), ib = order.indexOf(b);
+    return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+  });
+
+  let html = '<option value="">— select —</option>';
+  types.forEach(t => {
+    html += `<optgroup label="${escapeHtml(t)}">`;
+    byType[t].forEach(name => {
+      html += `<option value="${escapeHtml(name)}" data-type="${escapeHtml(t)}">${escapeHtml(name)}</option>`;
+    });
+    html += '</optgroup>';
+  });
+  return html;
+}
+
+function setActiveType(type) {
+  state.activeType = type;
+  localStorage.setItem(TYPE_KEY, type);
+
+  document.querySelector('.quick-add').dataset.type = type;
+
+  // Update segmented control
+  document.querySelectorAll('.type-toggle .type-seg').forEach(b => {
+    b.classList.toggle('active', b.dataset.type === type);
+  });
+
+  // Repopulate category dropdown
+  $('categorySelect').innerHTML = buildCategoryOptions(type);
+  $('subcategorySelect').innerHTML = buildSubcategoryOptions(type, '');
+
+  // Update submit button label
+  const labels = { expense: 'Add expense', income: 'Add income', investment: 'Add investment' };
+  $('addBtn').textContent = labels[type] || 'Add';
+
+  updateAddButton();
+}
+
+function onCategoryChange() {
+  const cat = $('categorySelect').value;
+  $('subcategorySelect').innerHTML = buildSubcategoryOptions(state.activeType, cat);
+  updateAddButton();
+}
+
+function updateAddButton() {
+  const amount = parseFloat($('amountInput').value);
+  const cat = $('categorySelect').value;
+  const ok = amount > 0 && cat;
+  $('addBtn').disabled = !ok;
+}
+
+function renderAll() {
+  renderHeroStats();
+  renderRecent();
+  renderInsights();
+}
+
+function renderHeroStats() {
+  const currentMonth = monthKeyOffset(0);
+  const monthTx = state.transactions.filter(e => monthKey(e.date) === currentMonth);
+
+  const sumByType = (t) => monthTx
+    .filter(e => (e.type || 'expense') === t)
+    .reduce((s, e) => s + Number(e.amount || 0), 0);
+
+  $('heroSpent').textContent = fmt(sumByType('expense'));
+  $('heroEarned').textContent = fmt(sumByType('income'));
+  $('heroInvested').textContent = fmt(sumByType('investment'));
+
+  const monthName = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  $('heroSub').textContent = monthName;
+}
+
+function formatDateShort(d) {
+  if (!d) return '';
+  if (d === todayISO()) return 'Today';
+  const dt = new Date(d);
+  const now = new Date();
+  const diff = Math.floor((now - dt) / (1000 * 60 * 60 * 24));
+  if (diff === 1) return 'Yesterday';
+  if (diff < 7) return dt.toLocaleDateString('en-US', { weekday: 'short' });
+  return dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+function renderRecent() {
+  const list = $('recentList');
+  const recent = [...state.transactions]
+    .sort((a, b) => (b.date || '').localeCompare(a.date || '') ||
+                    (b.created_at || '').localeCompare(a.created_at || ''))
+    .slice(0, 12);
+
+  $('recentMeta').textContent = state.transactions.length ? `${state.transactions.length} total` : '';
+
+  if (recent.length === 0) {
+    list.innerHTML = '<div class="empty">No entries yet. Add your first above.</div>';
+    return;
+  }
+
+  list.innerHTML = '';
+  recent.forEach(e => {
+    const type = e.type || 'expense';
+    const row = document.createElement('div');
+    row.className = 'entry';
+    row.dataset.type = type;
+
+    const sub = e.subcategory ? ` · ${escapeHtml(e.subcategory)}` : '';
+    const pay = e.payment_method ? ` · ${escapeHtml(e.payment_method)}` : '';
+    const title = e.note ? escapeHtml(e.note) : escapeHtml(e.category || 'Entry');
+    const sign = type === 'income' ? '+' : '';
+
+    row.innerHTML = `
+      <div class="entry-emoji">${categoryEmoji(type, e.category)}</div>
+      <div class="entry-body">
+        <div class="entry-title">${title}</div>
+        <div class="entry-meta">${formatDateShort(e.date)} · ${escapeHtml(e.category || '')}${sub}${pay}</div>
+      </div>
+      <div class="entry-amount">${sign}${cur(e.amount)}</div>
+      <button class="entry-delete" data-id="${e.id}">Delete</button>
+    `;
+
+    let pressTimer;
+    row.addEventListener('touchstart', () => {
+      pressTimer = setTimeout(() => row.classList.add('show-delete'), 500);
+    });
+    row.addEventListener('touchend', () => clearTimeout(pressTimer));
+    row.addEventListener('touchmove', () => clearTimeout(pressTimer));
+    row.addEventListener('contextmenu', (ev) => {
+      ev.preventDefault();
+      row.classList.toggle('show-delete');
+    });
+    row.addEventListener('click', (ev) => {
+      if (ev.target.classList.contains('entry-delete')) {
+        deleteTransaction(e.id);
+      } else if (row.classList.contains('show-delete')) {
+        row.classList.remove('show-delete');
+      }
+    });
+    list.appendChild(row);
+  });
+}
+
+// ===== Insights =====
+function setInsightType(type) {
+  state.insightType = type;
+  document.querySelectorAll('.insights-type-toggle .type-seg').forEach(b => {
+    b.classList.toggle('active', b.dataset.itype === type);
+  });
+  $('view-insights').dataset.itype = type;
+  renderInsights();
+}
+
+function renderInsights() {
+  const monthKeyVal = monthKeyOffset(state.monthOffset);
+  $('currentMonthLabel').textContent = monthLabel(monthKeyVal);
+
+  const type = state.insightType;
+  const monthTx = state.transactions.filter(e =>
+    monthKey(e.date) === monthKeyVal && (e.type || 'expense') === type
+  );
+  const total = monthTx.reduce((s, e) => s + Number(e.amount || 0), 0);
+
+  $('insightTotal').textContent = fmt(total);
+
+  // daily avg + comparison
+  const daysInMonth = new Date(
+    Number(monthKeyVal.slice(0, 4)),
+    Number(monthKeyVal.slice(5, 7)),
+    0
+  ).getDate();
+  const now = new Date();
+  const currentMonthKey = monthKeyOffset(0);
+  const dayDivisor = monthKeyVal === currentMonthKey ? now.getDate() : daysInMonth;
+  const avg = dayDivisor > 0 ? total / dayDivisor : 0;
+
+  const prevKey = monthKeyOffset(state.monthOffset - 1);
+  const prevTotal = state.transactions
+    .filter(e => monthKey(e.date) === prevKey && (e.type || 'expense') === type)
+    .reduce((s, e) => s + Number(e.amount || 0), 0);
+  let comp = '';
+  if (prevTotal > 0) {
+    const diff = ((total - prevTotal) / prevTotal) * 100;
+    const sign = diff >= 0 ? '↑' : '↓';
+    comp = ` · ${sign} ${Math.abs(diff).toFixed(0)}% vs last month`;
+  }
+  $('insightSub').textContent = `${cur(avg)}/day avg${comp}`;
+
+  renderCategoryBreakdown(monthTx, type);
+  renderTrend(type);
+  renderPaymentBreakdown(monthTx);
+  renderPersonBreakdown(monthTx);
+}
+
+function renderCategoryBreakdown(tx, type) {
+  const container = $('categoryBreakdown');
+  const totals = {};
+  tx.forEach(e => {
+    totals[e.category] = (totals[e.category] || 0) + Number(e.amount || 0);
+  });
+  renderBreakdownRows(container, totals, (cat) => ({
+    icon: categoryEmoji(type, cat),
+    text: cat
+  }));
+}
+
+function renderPaymentBreakdown(tx) {
+  const container = $('paymentBreakdown');
+  const totals = {};
+  tx.forEach(e => {
+    const key = e.payment_method || '—';
+    totals[key] = (totals[key] || 0) + Number(e.amount || 0);
+  });
+  renderBreakdownRows(container, totals, (name) => {
+    const m = state.paymentMethods.find(p => p.name === name);
+    return { icon: paymentIcon(m && m.type), text: name };
+  });
+}
+
+function paymentIcon(type) {
+  if (type === 'Bank Account') return '🏦';
+  if (type === 'Credit Card') return '💳';
+  if (type === 'UPI') return '📱';
+  if (type === 'Cash') return '💵';
+  if (type === 'Debit Card') return '💳';
+  if (type === 'Wallet') return '👛';
+  return '💼';
+}
+
+function renderPersonBreakdown(tx) {
+  const container = $('personBreakdown');
+  const totals = {};
+  tx.forEach(e => {
+    const p = e.person || '—';
+    totals[p] = (totals[p] || 0) + Number(e.amount || 0);
+  });
+  renderBreakdownRows(container, totals, (p) => ({ icon: '', text: p }));
+}
+
+function renderBreakdownRows(container, totals, labelFn) {
+  const entries = Object.entries(totals).sort((a, b) => b[1] - a[1]);
+  if (entries.length === 0) {
+    container.innerHTML = '<div class="muted" style="text-align:center;padding:12px;">No data this month yet.</div>';
+    return;
+  }
+  const max = entries[0][1];
+  container.innerHTML = '';
+  entries.forEach(([key, amt]) => {
+    const pct = max > 0 ? amt / max : 0;
+    const { icon, text } = labelFn(key);
+    const row = document.createElement('div');
+    row.className = 'bd-row';
+    row.innerHTML = `
+      <div class="bd-label">${icon ? `<span class="emoji">${icon}</span>` : ''}${escapeHtml(text)}</div>
+      <div class="bd-bar"><div class="bd-fill" style="transform: scaleX(${pct})"></div></div>
+      <div class="bd-amount">${cur(amt)}</div>
+    `;
+    container.appendChild(row);
+  });
+}
+
+function renderTrend(type) {
+  const chart = $('trendChart');
+  chart.innerHTML = '';
+  const points = [];
+  for (let i = 5; i >= 0; i--) {
+    const key = monthKeyOffset(state.monthOffset - i);
+    const total = state.transactions
+      .filter(e => monthKey(e.date) === key && (e.type || 'expense') === type)
+      .reduce((s, e) => s + Number(e.amount || 0), 0);
+    points.push({ key, total });
+  }
+  const max = Math.max(...points.map(p => p.total), 1);
+  points.forEach((p, idx) => {
+    const heightPct = (p.total / max) * 100;
+    const col = document.createElement('div');
+    col.className = 'trend-col';
+    const label = monthLabel(p.key).split(' ')[0].slice(0, 3);
+    const valTxt = p.total > 0 ? (p.total >= 1000 ? Math.round(p.total / 1000) + 'k' : Math.round(p.total)) : '';
+    col.innerHTML = `
+      <div class="trend-value">${valTxt}</div>
+      <div class="trend-bar ${idx === 5 ? 'current' : ''}" style="height: ${heightPct}%"></div>
+      <div class="trend-label">${label}</div>
+    `;
+    chart.appendChild(col);
+  });
+}
+
+// ===== Actions =====
+async function addTransaction() {
+  const amount = parseFloat($('amountInput').value);
+  const category = $('categorySelect').value;
+  if (!amount || !category) return;
+
+  const paymentSel = $('paymentSelect');
+  const selectedOpt = paymentSel.options[paymentSel.selectedIndex];
+  const payment_type = selectedOpt ? (selectedOpt.dataset.type || '') : '';
+
+  const payload = {
+    action: 'add',
+    type: state.activeType,
+    amount,
+    category,
+    subcategory: $('subcategorySelect').value,
+    note: $('noteInput').value.trim(),
+    person: $('personSelect').value,
+    payment_method: paymentSel.value,
+    payment_type,
+    date: $('dateInput').value || todayISO()
+  };
+
+  const btn = $('addBtn');
+  btn.disabled = true;
+  const originalLabel = btn.textContent;
+  btn.textContent = 'Saving…';
+
+  try {
+    const resp = await apiPost(payload);
+    if (!resp.ok) throw new Error(resp.error || 'Failed');
+
+    // Optimistic local insert
+    state.transactions.push({
+      id: resp.data.id,
+      type: payload.type,
+      date: payload.date,
+      amount: payload.amount,
+      category: payload.category,
+      subcategory: payload.subcategory,
+      note: payload.note,
+      person: payload.person,
+      payment_method: payload.payment_method,
+      payment_type: payload.payment_type,
+      created_at: todayISO()
+    });
+
+    // Reset form (keep type, person, date)
+    $('amountInput').value = '';
+    $('noteInput').value = '';
+    $('categorySelect').value = '';
+    $('subcategorySelect').innerHTML = buildSubcategoryOptions(state.activeType, '');
+    $('paymentSelect').value = '';
+
+    renderAll();
+    showToast('Saved');
+  } catch (err) {
+    showToast('Could not save');
+    console.error(err);
+  } finally {
+    btn.textContent = originalLabel;
+    updateAddButton();
+  }
+}
+
+async function deleteTransaction(id) {
+  if (!confirm('Delete this entry?')) return;
+  const backup = state.transactions;
+  state.transactions = state.transactions.filter(e => e.id !== id);
+  renderAll();
+  try {
+    const resp = await apiPost({ action: 'delete', id });
+    if (!resp.ok || !resp.data.deleted) throw new Error('Failed');
+    showToast('Deleted');
+  } catch (err) {
+    state.transactions = backup;
+    renderAll();
+    showToast('Could not delete');
+  }
+}
+
+function switchView(view) {
+  document.querySelectorAll('.tab-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.view === view);
+  });
+  document.querySelectorAll('.view').forEach(v => {
+    v.classList.toggle('active', v.id === `view-${view}`);
+  });
+  localStorage.setItem(VIEW_KEY, view);
+  if (view === 'insights') renderInsights();
+}
+
+// ===== Event listeners =====
+function setupListeners() {
+  $('unlockBtn').onclick = () => tryUnlock();
+  $('tokenInput').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') tryUnlock();
+  });
+  $('urlInput').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') $('tokenInput').focus();
+  });
+  $('changeUrl').onclick = changeApiUrl;
+
+  $('amountInput').addEventListener('input', updateAddButton);
+  $('categorySelect').addEventListener('change', onCategoryChange);
+  $('addBtn').onclick = addTransaction;
+
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.onclick = () => switchView(btn.dataset.view);
+  });
+
+  document.querySelectorAll('.type-toggle .type-seg').forEach(btn => {
+    btn.onclick = () => setActiveType(btn.dataset.type);
+  });
+
+  document.querySelectorAll('.insights-type-toggle .type-seg').forEach(btn => {
+    btn.onclick = () => setInsightType(btn.dataset.itype);
+  });
+
+  $('prevMonth').onclick = () => { state.monthOffset -= 1; renderInsights(); };
+  $('nextMonth').onclick = () => {
+    if (state.monthOffset < 0) { state.monthOffset += 1; renderInsights(); }
+  };
+}
+
+// ===== Boot =====
+window.addEventListener('DOMContentLoaded', () => {
+  setupListeners();
+  initLockScreen();
+});
+
+</script>
+</body>
+</html>
